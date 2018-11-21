@@ -9,13 +9,6 @@ import { UIDrop } from "../core/ui-drop";
 import { UIInternal } from "../utils/ui-internal";
 import { BaseInput } from "./base-input";
 
-// TODO: missing funtionality
-/**
- * 1. When drop opens check for selected to scrollTo
- * 2. When drop closes check if reset query to selected label or blank
- * 3. Add key events
- */
-
 const KEY_DOWN = 40;
 const KEY_UP = 38;
 const BACKSPACE = 8;
@@ -55,7 +48,7 @@ export class ListMaker extends BaseInput {
   protected isGrouped = false;
   protected ignoreChange = false;
 
-  protected matcher: ({ model, value }) => boolean;
+  protected matcher: ({ option, value }) => boolean;
 
   protected valueChanged() {
     if (this.ignoreChange) {
@@ -64,7 +57,7 @@ export class ListMaker extends BaseInput {
     if (!this.valueProperty) {
       this.model = this.value;
       if (!this.multiple) {
-        this.inputValue = this.value;
+        this.inputValue = this.value ? this.value[this.labelProperty] || this.value : "";
       }
       return;
     }
@@ -72,8 +65,8 @@ export class ListMaker extends BaseInput {
       if (this.multiple) {
         this.model = this.options.filter(o => {
           if (this.matcher) {
-            return this.value.some(model => {
-              return this.matcher({ model, value: o });
+            return this.value.some(value => {
+              return this.matcher({ option: o, value });
             });
           } else {
             return this.value.includes(o[this.valueProperty] || o);
@@ -82,7 +75,7 @@ export class ListMaker extends BaseInput {
       } else {
         this.model = this.options.find(o => {
           if (this.matcher) {
-            return this.matcher({ model: this.model, value: o });
+            return this.matcher({ option: o, value: this.value });
           } else {
             return this.value.includes(o[this.valueProperty] || o);
           }
@@ -157,7 +150,7 @@ export class ListMaker extends BaseInput {
     const classes = ["ui-list__item"];
     if (!this.multiple) {
       if (this.matcher) {
-        this.matcher({ model: this.value, value: option })
+        this.matcher({ option, value: this.value })
           ? classes.push("ui-list__item--selected")
           : fn();
       } else if ((option[this.valueProperty] || option) === this.value) {
@@ -165,8 +158,8 @@ export class ListMaker extends BaseInput {
       }
     } else if (this.multiple && this.value) {
       if (this.matcher) {
-        this.value.forEach(model => {
-          this.matcher({ model, value: option }) ? classes.push("ui-list__item--disabled") : fn();
+        this.value.forEach(value => {
+          this.matcher({ option, value }) ? classes.push("ui-list__item--disabled") : fn();
         });
       } else if (this.value.includes(option[this.valueProperty] || option)) {
         classes.push("ui-list__item--disabled");
@@ -176,18 +169,19 @@ export class ListMaker extends BaseInput {
   }
 
   protected toggleDrop(open?: boolean): boolean {
-    if (open === true && this.dropEl.isOpen) {
-      UIInternal.queueMicroTask(() => this.dropEl.updatePosition());
-      return;
-    }
-    if (super.toggleDrop(open)) {
-      this.loadOptions();
-    } else {
-      this.resetQuery();
+    if (this.dropEl) {
+      if (open === true && this.dropEl.isOpen) {
+        UIInternal.queueMicroTask(() => this.dropEl.updatePosition());
+        return;
+      }
+      if (super.toggleDrop(open)) {
+        this.loadOptions();
+      }
     }
   }
 
   protected loadOptions(): void {
+    // TODO: Provide callback for fetching existing selected models
     if (this.query) {
       this.fetchOptions();
     } else {
@@ -203,11 +197,15 @@ export class ListMaker extends BaseInput {
         ? (this.model[this.labelProperty] || this.model).replace("<u>", "").replace("</u>", "")
         : "";
     }
+    // TODO: Reset options for filtered lists only
   }
 
   private async fetchOptions(query?: string) {
     this.showLoading();
     const result = await this.query({ query });
+    if (!this.options) {
+      this.options = result;
+    }
     this.buildOptions(result || []);
   }
 
@@ -220,8 +218,10 @@ export class ListMaker extends BaseInput {
     }
   }
 
-  private buildOptions(options: AnyObject[]): void {
-    this.showLoading();
+  private buildOptions(options: AnyObject[], silent: boolean = false): void {
+    if (!silent) {
+      this.showLoading();
+    }
     const optionsClone = options.map(o => (isString(o) ? `${o}` : { ...o }));
     UIInternal.queueTask(() => {
       this.isLoading = false;
@@ -284,6 +284,7 @@ export class ListMaker extends BaseInput {
 
   private checkKeyEvent($event: KeyboardEvent): boolean {
     if ([KEY_DOWN, KEY_UP].includes($event.keyCode)) {
+      // TODO: Add hilight and select functionality
       $event.stopEvent();
     } else if (this.dropEl && this.dropEl.isOpen && $event.keyCode === ENTER) {
       $event.stopEvent();
