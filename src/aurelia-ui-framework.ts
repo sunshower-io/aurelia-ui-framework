@@ -6,19 +6,21 @@
  */
 
 import { Container, FrameworkConfiguration, PLATFORM } from "aurelia-framework";
+import { registerValidators, UIValidationRenderer } from "./forms/ui-validation";
 import "./libs/array";
 import "./libs/phonelib";
 import "./libs/string";
 import "./libs/window";
 import { UIAppConfig } from "./utils/ui-app-config";
 
+export { getValidationController } from "./forms/ui-validation";
 export { Countries } from "./libs/countries";
 export { Currencies } from "./libs/currencies";
 export { FileTypes } from "./libs/filetypes";
 export * from "./model/ui-tree-model";
+export * from "./services/ui-alert";
 export * from "./services/ui-application";
 export * from "./services/ui-dialog";
-export * from "./services/ui-alert";
 export * from "./utils/ui-format";
 export * from "./utils/ui-http";
 
@@ -72,6 +74,7 @@ export class UIFrameworkConfig {
       this.loadFromModule(PLATFORM.moduleName("./forms/ui-checkbox"));
       this.loadFromModule(PLATFORM.moduleName("./forms/ui-radio"));
       this.loadFromModule(PLATFORM.moduleName("./forms/ui-toggle"));
+      this.loadFromModule(PLATFORM.moduleName("./forms/ui-phone"));
       this.loadFromModule(PLATFORM.moduleName("./forms/ui-date"));
       this.loadFromModule(PLATFORM.moduleName("./forms/ui-date-input"));
       this.loadFromModule(PLATFORM.moduleName("./forms/ui-date-range"));
@@ -156,6 +159,11 @@ export function configure(
   configCallback: (config: UIFrameworkConfig) => void
 ) {
   Container.instance = auConfig.container;
+
+  auConfig.container.registerHandler("ui-validator", container =>
+    container.get(UIValidationRenderer)
+  );
+  registerValidators(auConfig.container);
 
   const config = new UIFrameworkConfig(auConfig);
   if (isFunction(configCallback)) {
